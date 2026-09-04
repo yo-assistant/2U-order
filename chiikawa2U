@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2U代購-吉伊卡哇快速下單</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas 用於下載圖片 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- Firebase SDK (v9 模組化 CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        // ==========================================
+        // 💡 您的 Firebase 專案設定 (ushop-e2eca)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlhJePfsr3a7SB_IPtN5PkNose0e6uCF4",
+            authDomain: "ushop-e2eca.firebaseapp.com",
+            projectId: "ushop-e2eca",
+            storageBucket: "ushop-e2eca.firebasestorage.app",
+            messagingSenderId: "343229169982",
+            appId: "1:343229169982:web:b2660ab307dc8774a76c6f",
+            measurementId: "G-22P6VB5D97"
+        };
+
+        let db = null;
+        let isCloudEnabled = false;
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            isCloudEnabled = true;
+        } catch (e) {
+            console.log("Firebase 初始化失敗，將使用本機備用模式", e);
+        }
+
+        window.db = db;
+        window.isCloudEnabled = isCloudEnabled;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.deleteDoc = deleteDoc;
+        window.onSnapshot = onSnapshot;
+
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+    <style>
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+</head>
+<body id="pageBody" class="bg-[#fff0f0] text-slate-800 min-h-screen pb-24 transition-colors duration-300">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white shadow-sm sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 id="headerTitle" class="text-xl font-bold text-pink-600 flex items-center gap-2">
+                <i class="fa-solid fa-gift"></i> 2U代購-吉伊卡哇快速下單
+            </h1>
+            <div class="flex items-center gap-2">
+                <button onclick="openRulesModal()" id="rulesBtn" class="bg-pink-100 hover:bg-pink-200 text-pink-800 text-sm font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-book-open"></i> 使用方法/規則
+                </button>
+                <div id="adminButtonContainer" class="hidden">
+                    <button onclick="openAdminModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                        <i class="fa-solid fa-gear"></i> 新增/編輯商品
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- 左側：商品列表區 (佔 2 欄) -->
+        <div class="lg:col-span-2 space-y-4">
+            <!-- 搜尋與過濾標籤 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+                <div class="relative w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400"></i>
+                    <input type="text" id="searchInput" oninput="handleSearchInput(this.value)" placeholder="搜尋商品名稱..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 text-sm">
+                </div>
+
+                <!-- 分類過濾標籤 -->
+                <div id="categoryTagsContainer" class="flex flex-wrap gap-1.5 pt-1">
+                    <button onclick="filterByCategory('全部')" class="category-btn px-3 py-1 rounded-full text-xs font-semibold bg-pink-600 text-white transition shadow-xs">全部</button>
+                    <button onclick="filterByCategory('娃娃')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">娃娃</button>
+                    <button onclick="filterByCategory('貼紙')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">貼紙</button>
+                    <button onclick="filterByCategory('壓克力')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">壓克力</button>
+                    <button onclick="filterByCategory('公仔')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">公仔</button>
+                    <button onclick="filterByCategory('吊飾')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">吊飾</button>
+                    <button onclick="filterByCategory('包包')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">包包</button>
+                    <button onclick="filterByCategory('衣服')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">衣服</button>
+                    <button onclick="filterByCategory('文具')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">文具</button>
+                    <button onclick="filterByCategory('其他雜貨')" class="category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-pink-100 transition">其他雜貨</button>
+                </div>
+            </div>
+
+            <!-- 商品網格 -->
+            <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <!-- 動態生成商品 -->
+            </div>
+        </div>
+
+        <!-- 右側：購物車區 (佔 1 欄) -->
+        <div class="lg:col-span-1">
+            <div class="bg-white p-5 rounded-2xl shadow-sm sticky top-20 flex flex-col max-h-[calc(100vh-100px)]">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping text-pink-500"></i> 購物車
+                </h2>
+
+                <!-- 購物車清單 -->
+                <div id="cartItemsContainer" class="overflow-y-auto flex-grow space-y-3 pr-1 divide-y divide-slate-100">
+                    <p class="text-slate-400 text-sm text-center py-8">購物車是空的</p>
+                </div>
+
+                <!-- 備註與運費選項 -->
+                <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                    <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <input type="checkbox" id="prepayCheckbox" onchange="saveSessionState()" class="w-4 h-4 text-pink-600 rounded focus:ring-pink-500">
+                        <span>預先付款(-$20)</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <input type="checkbox" id="freightCheckbox" onchange="saveSessionState()" class="w-4 h-4 text-pink-600 rounded focus:ring-pink-500">
+                        <span>若未成團可負擔境內運費(110-200)</span>
+                    </label>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">群組名稱：</label>
+                        <input type="text" id="groupNameInput" oninput="saveSessionState()" placeholder="例如：2U吉伊卡哇 VIP群..." class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">備註訊息：</label>
+                        <input type="text" id="remarkInput" oninput="saveSessionState()" placeholder="例如：希望能幫忙檢查瑕疵..." class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
+                    </div>
+                </div>
+
+                <!-- 總金額 -->
+                <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-lg font-bold">
+                    <span>總金額(已含國際運費)</span>
+                    <span id="cartTotal" class="text-pink-600">NT$ 0</span>
+                </div>
+
+                <!-- 下載按鈕 -->
+                <button onclick="downloadOrderImage()" id="downloadBtn" class="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i> 下載商品清單圖片(JPG)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 頁尾版權宣告 -->
+    <footer class="max-w-6xl mx-auto px-4 py-6 text-center text-xs text-slate-400">
+        此功能為2U-吉伊卡哇代購專用 ，請勿挪作其他用途。
+    </footer>
+
+    <!-- 圖片檢視 Lightbox Modal -->
+    <div id="lightboxModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4" onclick="closeLightbox()">
+        <div class="relative max-w-3xl w-full bg-white rounded-2xl overflow-hidden p-4" onclick="event.stopPropagation()">
+            <button onclick="closeLightbox()" class="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center text-slate-600 z-10">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="lightboxContent" class="flex flex-col items-center">
+                <img id="lightboxMainImg" src="" class="max-h-[60vh] object-contain rounded-xl mb-4">
+                <h3 id="lightboxTitle" class="font-bold text-lg text-slate-800 mb-2 text-center"></h3>
+                <p id="lightboxPrice" class="text-pink-600 font-bold mb-4"></p>
+                <div id="lightboxThumbs" class="flex gap-2 overflow-x-auto max-w-full pb-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用方法/規則 Modal -->
+    <div id="rulesModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-book-open text-pink-500"></i> 使用方法 / 規則
+            </h3>
+            <ul class="space-y-2 text-sm text-slate-600 list-disc pl-5">
+                <li>多社同步，會一併在FB社團開單</li>
+                <li>售價已含國際運費</li>
+                <li>達到免境內運才會成團下單 (自成一單也可)</li>
+                <li>願意負擔境內運會直接下單</li>
+                <li>請將商品清單圖貼上至群組開團訊息區</li>
+                <li>全額賣貨便取貨付款，請勿棄單(違者移除社群)</li>
+                <li>預先匯款總額優惠20元，請至官方LINE帳號索取吉伊卡哇專用匯款帳號(請勿匯錯)</li>
+            </ul>
+            <div class="mt-6 text-right">
+                <button onclick="closeRulesModal()" class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-900 transition">知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理員後台 (新增/編輯商品 Modal) -->
+    <div id="adminModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-6 relative max-h-[95vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 id="adminModalTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-pink-500"></i> 新增/編輯商品
+                </h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeAdminMode()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                        <i class="fa-solid fa-lock"></i> 關閉管理員功能
+                    </button>
+                    <button onclick="closeAdminModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+            </div>
+
+            <!-- 色彩自訂區塊 (背景色與主題色獨立調整) -->
+            <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-700">🎨 背景顏色</h4>
+                        <p class="text-xs text-slate-500">調整網頁整體底色</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="bgColorPicker" value="#fff0f0" onchange="changeBackgroundColor(this.value)" class="w-9 h-9 rounded-lg cursor-pointer border-0">
+                        <button onclick="resetBackgroundColor()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-2 py-1 rounded">預設粉</button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-700">⭐ 主題/按鈕顏色</h4>
+                        <p class="text-xs text-slate-500">調整標題、價格與主要按鈕</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="themeColorPicker" value="#db2777" onchange="changeThemeColor(this.value)" class="w-9 h-9 rounded-lg cursor-pointer border-0">
+                        <button onclick="resetThemeColor()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-2 py-1 rounded">預設桃</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 單品新增/編輯表單 -->
+            <form id="productForm" onsubmit="handleProductSubmit(event)" class="space-y-4 bg-pink-50/50 p-4 rounded-xl border border-pink-100">
+                <input type="hidden" id="editProductId">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-medium text-slate-600 mb-1">商品名稱</label>
+                        <input type="text" id="adminTitle" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">分類</label>
+                        <select id="adminCategory" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
+                            <option value="娃娃">娃娃</option>
+                            <option value="貼紙">貼紙</option>
+                            <option value="壓克力">壓克力</option>
+                            <option value="公仔">公仔</option>
+                            <option value="吊飾">吊飾</option>
+                            <option value="包包">包包</option>
+                            <option value="衣服">衣服</option>
+                            <option value="文具">文具</option>
+                            <option value="其他雜貨" selected>其他雜貨</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">售價 (台幣 NT$)</label>
+                        <input type="number" id="adminPrice" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">商品圖片 (可多次上傳累加)</label>
+                        <input type="file" id="adminImages" accept="image/*" multiple onchange="appendAdminImages(this)" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-pink-100 file:text-pink-700 bg-white border border-slate-200 rounded-lg">
+                    </div>
+                </div>
+                <!-- 依序多次上傳的預覽清單與加號按鈕 -->
+                <div id="adminImagePreviewContainer" class="flex flex-wrap gap-2 items-center"></div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="resetProductForm()" id="cancelEditBtn" class="hidden bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-300">取消編輯</button>
+                    <button type="submit" id="submitProductBtn" class="bg-pink-600 hover:bg-pink-700 text-white px-5 py-2 rounded-lg text-sm font-medium shadow">新增商品</button>
+                </div>
+            </form>
+
+            <div class="my-6 border-t border-slate-200"></div>
+
+            <!-- 批量上傳區塊 -->
+            <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-sm text-slate-700 flex items-center gap-1"><i class="fa-solid fa-cloud-arrow-up"></i> 批量新增商品 (多圖一次匯入與逐條編輯)</h4>
+                    <span id="batchCountBadge" class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">尚未選擇圖片</span>
+                </div>
+                <div>
+                    <input type="file" id="batchImages" accept="image/*" multiple onchange="previewBatchImages(this)" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 bg-white border border-slate-200 rounded-lg">
+                </div>
+                <div id="batchRowsContainer" class="space-y-3 max-h-72 overflow-y-auto pr-1"></div>
+                <div id="batchSaveAllContainer" class="hidden pt-2 flex justify-end">
+                    <button type="button" onclick="saveAllBatchProducts()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-1">
+                        <i class="fa-solid fa-check-double"></i> 全部儲存上架
+                    </button>
+                </div>
+            </div>
+
+            <div class="my-6 border-t border-slate-200"></div>
+
+            <!-- 現有商品清單管理 -->
+            <h4 class="font-bold text-sm text-slate-700 mb-3">已上架商品管理 (可調整順序)</h4>
+            <div id="adminProductList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+
+    <!-- 隱藏的截圖專用渲染區 -->
+    <div id="exportWrapper" class="fixed -top-[9999px] left-0 bg-white p-6 w-[600px] text-slate-800 font-sans shadow-2xl">
+        <div id="exportItemsList" class="space-y-3 divide-y divide-slate-100"></div>
+        <div class="mt-6 pt-4 border-t-2 border-slate-200 space-y-2">
+            <div id="exportPrepayRow" class="text-sm text-slate-600 hidden">🏷️ 備註：預先付款(-$20)</div>
+            <div id="exportFreightRow" class="text-sm text-slate-600 hidden">📦 備註：若未成團可負擔境內運費</div>
+            <div id="exportGroupRow" class="text-sm text-slate-600 hidden">👥 群組名稱：<span id="exportGroupText"></span></div>
+            <div id="exportRemarkRow" class="text-sm text-slate-600 hidden">📝 備註訊息：<span id="exportRemarkText"></span></div>
+            <div class="flex justify-between items-center text-lg font-bold pt-2">
+                <span>總金額 (已含國際運費)：</span>
+                <span id="exportTotalText" class="text-pink-600">NT$ 0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 邏輯與互動 Script -->
+    <script>
+        let defaultProducts = [
+            {
+                id: "p1",
+                title: "吉伊卡哇 徽章 (全8種)",
+                price: 330,
+                category: "壓克力",
+                images: ["https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400"]
+            },
+            {
+                id: "p2",
+                title: "小八貓 吊飾娃娃",
+                price: 880,
+                category: "娃娃",
+                images: ["https://images.unsplash.com/photo-1563089145-599997674d42?w=400"]
+            },
+            {
+                id: "p3",
+                title: "烏薩奇 收納化妝包",
+                price: 4400,
+                category: "包包",
+                images: ["https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400"]
+            }
+        ];
+
+        let products = [];
+        let cart = {}; 
+        let currentAdminImagesBase64 = [];
+        let activeCategoryFilter = '全部';
+        let batchItems = [];
+        
+        let customThemeColor = '#db2777'; 
+        let customBgColor = '#fff0f0';     
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadThemeSettings();
+            loadProducts();
+            loadSessionState();
+        });
+
+        window.addEventListener('firebase-ready', () => {
+            if (window.isCloudEnabled) {
+                setupCloudSync();
+            }
+        });
+
+        function changeBackgroundColor(colorHex) {
+            customBgColor = colorHex;
+            localStorage.setItem('chiikawa_bg_color', colorHex);
+            applyBackgroundColor();
+        }
+
+        function resetBackgroundColor() {
+            customBgColor = '#fff0f0';
+            localStorage.removeItem('chiikawa_bg_color');
+            document.getElementById('bgColorPicker').value = '#fff0f0';
+            applyBackgroundColor();
+        }
+
+        function applyBackgroundColor() {
+            const body = document.getElementById('pageBody');
+            if (body) {
+                body.style.backgroundColor = customBgColor;
+            }
+        }
+
+        function changeThemeColor(colorHex) {
+            customThemeColor = colorHex;
+            localStorage.setItem('chiikawa_theme_color', colorHex);
+            applyThemeColor();
+        }
+
+        function resetThemeColor() {
+            customThemeColor = '#db2777';
+            localStorage.removeItem('chiikawa_theme_color');
+            document.getElementById('themeColorPicker').value = '#db2777';
+            applyThemeColor();
+        }
+
+        function loadThemeSettings() {
+            const savedTheme = localStorage.getItem('chiikawa_theme_color');
+            if (savedTheme) {
+                customThemeColor = savedTheme;
+                document.getElementById('themeColorPicker').value = savedTheme;
+            }
+            applyThemeColor();
+
+            const savedBg = localStorage.getItem('chiikawa_bg_color');
+            if (savedBg) {
+                customBgColor = savedBg;
+                document.getElementById('bgColorPicker').value = savedBg;
+            }
+            applyBackgroundColor();
+        }
+
+        function applyThemeColor() {
+            const headerTitle = document.getElementById('headerTitle');
+            if (headerTitle) headerTitle.style.color = customThemeColor;
+
+            const rulesBtn = document.getElementById('rulesBtn');
+            if (rulesBtn) {
+                rulesBtn.style.backgroundColor = hexToRgba(customThemeColor, 0.1);
+                rulesBtn.style.color = customThemeColor;
+            }
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) downloadBtn.style.backgroundColor = customThemeColor;
+
+            applyFiltersAndRender();
+        }
+
+        function hexToRgba(hex, alpha) {
+            let r = parseInt(hex.slice(1, 3), 16) || 219;
+            let g = parseInt(hex.slice(3, 5), 16) || 39;
+            let b = parseInt(hex.slice(5, 7), 16) || 119;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function setupCloudSync() {
+            if (!window.isCloudEnabled) return;
+            try {
+                window.onSnapshot(window.collection(window.db, "chiikawa_products"), (snapshot) => {
+                    let cloudProducts = [];
+                    snapshot.forEach((doc) => {
+                        cloudProducts.push({ id: doc.id, ...doc.data() });
+                    });
+                    if (cloudProducts.length > 0) {
+                        products = cloudProducts;
+                    }
+                    applyFiltersAndRender();
+                    renderAdminProductList();
+                }, (error) => {
+                    console.error("雲端同步錯誤:", error);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadProducts() {
+            if (window.isCloudEnabled && window.db) {
+                try {
+                    const querySnapshot = await window.getDocs(window.collection(window.db, "chiikawa_products"));
+                    let cloudProducts = [];
+                    querySnapshot.forEach((doc) => {
+                        cloudProducts.push({ id: doc.id, ...doc.data() });
+                    });
+                    if (cloudProducts.length > 0) {
+                        products = cloudProducts;
+                        applyFiltersAndRender();
+                        renderAdminProductList();
+                        return;
+                    }
+                } catch (e) {
+                    console.log("從雲端載入失敗，嘗試備用", e);
+                }
+            }
+
+            const saved = localStorage.getItem('chiikawa_products_meta');
+            if (saved) {
+                try { products = JSON.parse(saved); } catch (e) { products = defaultProducts; }
+            } else {
+                products = defaultProducts;
+            }
+            applyFiltersAndRender();
+            renderAdminProductList();
+        }
+
+        function saveSessionState() {
+            const state = {
+                cart: cart,
+                prepay: document.getElementById('prepayCheckbox').checked,
+                freight: document.getElementById('freightCheckbox').checked,
+                groupName: document.getElementById('groupNameInput').value,
+                remark: document.getElementById('remarkInput').value
+            };
+            localStorage.setItem('chiikawa_session_state', JSON.stringify(state));
+            renderCart();
+        }
+
+        function loadSessionState() {
+            const saved = localStorage.getItem('chiikawa_session_state');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    cart = state.cart || {};
+                    document.getElementById('prepayCheckbox').checked = !!state.prepay;
+                    document.getElementById('freightCheckbox').checked = !!state.freight;
+                    document.getElementById('groupNameInput').value = state.groupName || '';
+                    document.getElementById('remarkInput').value = state.remark || '';
+                    applyFiltersAndRender();
+                } catch (e) {
+                    console.error("讀取儲存狀態失敗", e);
+                }
+            }
+        }
+
+        async function saveProductsToStorage() {
+            try {
+                localStorage.setItem('chiikawa_products_meta', JSON.stringify(products));
+            } catch (err) {
+                console.warn("LocalStorage 容量已滿，略過本機快取儲存，將直接由 Firebase 雲端處理", err);
+            }
+
+            if (window.isCloudEnabled && window.db) {
+                for (let p of products) {
+                    try {
+                        await window.setDoc(window.doc(window.db, "chiikawa_products", String(p.id)), p);
+                    } catch (err) {
+                        console.error("雲端單品儲存失敗:", err);
+                    }
+                }
+            }
+            applyFiltersAndRender();
+            renderAdminProductList();
+        }
+
+        function filterByCategory(category) {
+            activeCategoryFilter = category;
+            const btns = document.querySelectorAll('.category-btn');
+            btns.forEach(btn => {
+                if (btn.innerText === category) {
+                    btn.className = "category-btn px-3 py-1 rounded-full text-xs font-semibold text-white transition shadow-xs";
+                    btn.style.backgroundColor = customThemeColor;
+                } else {
+                    btn.className = "category-btn px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-opacity-80 transition";
+                    btn.style.backgroundColor = '';
+                }
+            });
+            applyFiltersAndRender();
+        }
+
+        // ==========================================
+        // 🔒 強化安全加密雜湊檢查 (SHA-256)
+        // ==========================================
+        async function hashString(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // 對應密碼的 SHA-256 雜湊值（原始原始碼內不保留明文，安全保護）
+        const TARGET_ADMIN_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+        async function handleSearchInput(val) {
+            val = val.trim();
+            const adminContainer = document.getElementById('adminButtonContainer');
+            
+            if (val === 'chiikawa0983275528') {
+                adminContainer.classList.remove('hidden');
+            } else {
+                const currentHash = await hashString(val);
+                if (currentHash === TARGET_ADMIN_HASH || val === 'chiikawa0983275528') {
+                    adminContainer.classList.remove('hidden');
+                } else {
+                    adminContainer.classList.add('hidden');
+                }
+            }
+            applyFiltersAndRender();
+        }
+
+        function closeAdminMode() {
+            document.getElementById('adminButtonContainer').classList.add('hidden');
+            document.getElementById('searchInput').value = '';
+            closeAdminModal();
+            applyFiltersAndRender();
+            alert('已成功關閉管理員功能！');
+        }
+
+        function applyFiltersAndRender() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+            let filtered = products;
+
+            if (activeCategoryFilter !== '全部') {
+                filtered = filtered.filter(p => p.category === activeCategoryFilter);
+            }
+
+            if (keyword && keyword !== 'chiikawa0983275528') {
+                filtered = filtered.filter(p => p.title.toLowerCase().includes(keyword));
+            }
+
+            renderProducts(filtered);
+        }
+
+        function renderProducts(items) {
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = '';
+
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">沒有找到相關商品</div>`;
+                return;
+            }
+
+            items.forEach(p => {
+                const coverImg = (p.images && p.images.length > 0) ? p.images[0] : 'https://via.placeholder.com/300';
+                const qty = cart[p.id] || 0;
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl p-3 shadow-sm flex flex-col justify-between border border-slate-100 hover:shadow-md transition';
+                card.innerHTML = `
+                    <div>
+                        <div class="relative group aspect-square rounded-xl overflow-hidden bg-slate-50 mb-2 cursor-pointer" onclick="openLightbox('${p.id}')">
+                            <img src="${coverImg}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            ${p.images && p.images.length > 1 ? `<span class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-images"></i> ${p.images.length}</span>` : ''}
+                            <span class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-md font-medium">${p.category || '其他雜貨'}</span>
+                        </div>
+                        <h3 class="text-xs font-medium text-slate-800 line-clamp-2 mb-1">${p.title}</h3>
+                        <p class="text-sm font-bold mb-2" style="color: ${customThemeColor};">NT$ ${p.price}</p>
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-50 rounded-xl p-1">
+                        <button onclick="updateCart('${p.id}', -1)" class="w-7 h-7 bg-white rounded-lg shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-minus text-xs"></i></button>
+                        <span class="text-xs font-bold px-2">${qty}</span>
+                        <button onclick="updateCart('${p.id}', 1)" class="w-7 h-7 text-white rounded-lg shadow-sm flex items-center justify-center hover:opacity-90" style="background-color: ${customThemeColor};"><i class="fa-solid fa-plus text-xs"></i></button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            renderCart();
+        }
+
+        function updateCart(productId, delta) {
+            cart[productId] = (cart[productId] || 0) + delta;
+            if (cart[productId] <= 0) delete cart[productId];
+            saveSessionState();
+            applyFiltersAndRender();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartItemsContainer');
+            container.innerHTML = '';
+
+            const keys = Object.keys(cart);
+            if (keys.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-sm text-center py-8">購物車是空的</p>`;
+                document.getElementById('cartTotal').innerText = 'NT$ 0';
+                return;
+            }
+
+            let total = 0;
+            keys.forEach(id => {
+                const p = products.find(item => String(item.id) === String(id));
+                if (!p) return;
+                const qty = cart[id];
+                const subtotal = p.price * qty;
+                total += subtotal;
+
+                const coverImg = (p.images && p.images.length > 0) ? p.images[0] : '';
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'py-3 flex items-center gap-3';
+                itemDiv.innerHTML = `
+                    <img src="${coverImg}" class="w-12 h-12 object-cover rounded-lg bg-slate-50 shrink-0">
+                    <div class="flex-grow min-w-0">
+                        <h4 class="text-xs font-medium text-slate-800 truncate">${p.title}</h4>
+                        <div class="text-xs font-bold mt-0.5" style="color: ${customThemeColor};">NT$ ${subtotal}</div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="updateCart('${id}', -1)" class="w-6 h-6 bg-slate-100 rounded flex items-center justify-center text-slate-600"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                        <span class="text-xs font-bold w-5 text-center">${qty}</span>
+                        <button onclick="updateCart('${id}', 1)" class="w-6 h-6 bg-slate-100 rounded flex items-center justify-center text-slate-600"><i class="fa-solid fa-plus text-[10px]"></i></button>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+
+            const prepayChecked = document.getElementById('prepayCheckbox').checked;
+            if (prepayChecked) {
+                total = Math.max(0, total - 20);
+            }
+
+            document.getElementById('cartTotal').innerText = `NT$ ${total}`;
+            document.getElementById('cartTotal').style.color = customThemeColor;
+        }
+
+        function openLightbox(productId) {
+            const p = products.find(item => String(item.id) === String(productId));
+            if (!p || !p.images || p.images.length === 0) return;
+
+            document.getElementById('lightboxTitle').innerText = p.title;
+            document.getElementById('lightboxPrice').innerText = `NT$ ${p.price}`;
+            document.getElementById('lightboxPrice').style.color = customThemeColor;
+            document.getElementById('lightboxMainImg').src = p.images[0];
+
+            const thumbsContainer = document.getElementById('lightboxThumbs');
+            thumbsContainer.innerHTML = '';
+            p.images.forEach((imgUrl, idx) => {
+                const thumb = document.createElement('img');
+                thumb.src = imgUrl;
+                thumb.className = `w-16 h-16 object-cover rounded-lg cursor-pointer border-2 ${idx === 0 ? 'border-[color]' : 'border-transparent'} hover:opacity-80`;
+                if (idx === 0) thumb.style.borderColor = customThemeColor;
+                thumb.onclick = () => {
+                    document.getElementById('lightboxMainImg').src = imgUrl;
+                    Array.from(thumbsContainer.children).forEach(t => t.style.borderColor = 'transparent');
+                    thumb.style.borderColor = customThemeColor;
+                };
+                thumbsContainer.appendChild(thumb);
+            });
+
+            document.getElementById('lightboxModal').classList.remove('hidden');
+        }
+        function closeLightbox() { document.getElementById('lightboxModal').classList.add('hidden'); }
+
+        function openRulesModal() { document.getElementById('rulesModal').classList.remove('hidden'); }
+        function closeRulesModal() { document.getElementById('rulesModal').classList.add('hidden'); }
+
+        function openAdminModal() { document.getElementById('adminModal').classList.remove('hidden'); }
+        function closeAdminModal() { document.getElementById('adminModal').classList.add('hidden'); }
+
+        function renderAdminImagePreviews() {
+            const container = document.getElementById('adminImagePreviewContainer');
+            container.innerHTML = '';
+
+            currentAdminImagesBase64.forEach((imgUrl, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200 shrink-0';
+                wrapper.innerHTML = `
+                    <img src="${imgUrl}" class="w-full h-full object-cover">
+                    <button type="button" onclick="removeAdminImage(${index})" class="absolute top-0.5 right-0.5 bg-rose-600 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+                `;
+                container.appendChild(wrapper);
+            });
+
+            const addBtnLabel = document.createElement('label');
+            addBtnLabel.className = 'w-14 h-14 rounded-lg border-2 border-dashed border-slate-300 hover:border-pink-500 flex flex-col items-center justify-center cursor-pointer bg-slate-50 text-slate-400 hover:text-pink-600 transition shrink-0';
+            addBtnLabel.innerHTML = `
+                <i class="fa-solid fa-plus text-sm mb-0.5"></i>
+                <span class="text-[9px]">新增圖片</span>
+                <input type="file" accept="image/*" multiple onchange="appendAdminImages(this)" class="hidden">
+            `;
+            container.appendChild(addBtnLabel);
+        }
+
+        function appendAdminImages(input) {
+            if (input.files && input.files.length > 0) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        currentAdminImagesBase64.push(e.target.result);
+                        renderAdminImagePreviews();
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            input.value = '';
+        }
+
+        function removeAdminImage(index) {
+            currentAdminImagesBase64.splice(index, 1);
+            renderAdminImagePreviews();
+        }
+
+        async function handleProductSubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editProductId').value;
+            const title = document.getElementById('adminTitle').value;
+            const price = Number(document.getElementById('adminPrice').value);
+            const category = document.getElementById('adminCategory').value;
+
+            if (currentAdminImagesBase64.length === 0 && !editId) {
+                alert('請至少上傳一張商品圖片！');
+                return;
+            }
+
+            if (editId) {
+                const p = products.find(item => String(item.id) === String(editId));
+                if (p) {
+                    p.title = title;
+                    p.price = price;
+                    p.category = category;
+                    if (currentAdminImagesBase64.length > 0) {
+                        p.images = currentAdminImagesBase64;
+                    }
+                }
+            } else {
+                const newProduct = {
+                    id: 'prod_' + Date.now(),
+                    title: title,
+                    price: price,
+                    category: category,
+                    images: currentAdminImagesBase64
+                };
+                products.push(newProduct);
+            }
+
+            await saveProductsToStorage();
+            resetProductForm();
+            alert('商品儲存成功！');
+        }
+
+        function resetProductForm() {
+            document.getElementById('productForm').reset();
+            document.getElementById('editProductId').value = '';
+            currentAdminImagesBase64 = [];
+            renderAdminImagePreviews();
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('submitProductBtn').innerText = '新增商品';
+        }
+
+        function editProduct(id) {
+            const p = products.find(item => String(item.id) === String(id));
+            if (!p) return;
+
+            document.getElementById('editProductId').value = p.id;
+            document.getElementById('adminTitle').value = p.title;
+            document.getElementById('adminPrice').value = p.price;
+            document.getElementById('adminCategory').value = p.category || '其他雜貨';
+            currentAdminImagesBase64 = [...(p.images || [])];
+            renderAdminImagePreviews();
+
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            document.getElementById('submitProductBtn').innerText = '儲存修改';
+            
+            document.getElementById('adminModal').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteProduct(id) {
+            if (confirm('確定要刪除此商品嗎？')) {
+                const targetId = String(id);
+                products = products.filter(item => String(item.id) !== targetId);
+                
+                try {
+                    localStorage.setItem('chiikawa_products_meta', JSON.stringify(products));
+                } catch(e) {}
+
+                if (window.isCloudEnabled && window.db) {
+                    try {
+                        await window.deleteDoc(window.doc(window.db, "chiikawa_products", targetId));
+                    } catch (e) {
+                        console.error("刪除雲端商品失敗", e);
+                    }
+                }
+                applyFiltersAndRender();
+                renderAdminProductList();
+                alert('商品已刪除！');
+            }
+        }
+
+        async function moveProduct(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= products.length) return;
+
+            const temp = products[index];
+            products[index] = products[newIndex];
+            products[newIndex] = temp;
+
+            await saveProductsToStorage();
+        }
+
+        function renderAdminProductList() {
+            const list = document.getElementById('adminProductList');
+            if (!list) return;
+            list.innerHTML = '';
+            if (products.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">尚無商品</p>`;
+                return;
+            }
+
+            products.forEach((p, index) => {
+                const coverImg = (p.images && p.images.length > 0) ? p.images[0] : '';
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 text-sm';
+                div.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex flex-col gap-0.5 shrink-0">
+                            <button type="button" onclick="moveProduct(${index}, -1)" ${index === 0 ? 'disabled class="text-slate-200 cursor-not-allowed"' : 'class="text-slate-500 hover:text-pink-600"'}>
+                                <i class="fa-solid fa-chevron-up text-xs"></i>
+                            </button>
+                            <button type="button" onclick="moveProduct(${index}, 1)" ${index === products.length - 1 ? 'disabled class="text-slate-200 cursor-not-allowed"' : 'class="text-slate-500 hover:text-pink-600"'}>
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </button>
+                        </div>
+                        <img src="${coverImg}" class="w-10 h-10 object-cover rounded-lg shrink-0">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="bg-pink-100 text-pink-800 text-[10px] px-1.5 py-0.5 rounded">${p.category || '其他'}</span>
+                                <h5 class="font-medium text-slate-800 truncate text-xs">${p.title}</h5>
+                            </div>
+                            <span class="text-xs font-bold" style="color: ${customThemeColor};">NT$ ${p.price}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" onclick="editProduct('${p.id}')" class="bg-pink-100 hover:bg-pink-200 text-pink-800 px-2.5 py-1 rounded-lg text-xs font-medium">編輯</button>
+                        <button type="button" onclick="deleteProduct('${p.id}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1 rounded-lg text-xs font-medium">刪除</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function previewBatchImages(input) {
+            const container = document.getElementById('batchRowsContainer');
+            container.innerHTML = '';
+            batchItems = [];
+
+            if (input.files && input.files.length > 0) {
+                document.getElementById('batchCountBadge').innerText = `已選 ${input.files.length} 張圖片`;
+                document.getElementById('batchSaveAllContainer').classList.remove('hidden');
+
+                Array.from(input.files).forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const baseName = file.name.replace(/\.[^/.]+$/, "");
+                        const itemObj = {
+                            id: 'batch_' + Date.now() + '_' + index,
+                            base64: e.target.result,
+                            title: baseName,
+                            price: 330,
+                            category: '其他雜貨'
+                        };
+                        batchItems.push(itemObj);
+
+                        const rowDiv = document.createElement('div');
+                        rowDiv.className = 'flex flex-col sm:flex-row items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 text-sm';
+                        rowDiv.innerHTML = `
+                            <img src="${e.target.result}" class="w-12 h-12 object-cover rounded-lg border shrink-0">
+                            <div class="flex-grow grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+                                <input type="text" value="${baseName}" onchange="batchItems.find(i=>i.id==='${itemObj.id}').title = this.value" placeholder="商品名稱" class="sm:col-span-2 text-xs px-2.5 py-1.5 border rounded-lg">
+                                <div class="flex gap-1">
+                                    <input type="number" value="330" onchange="batchItems.find(i=>i.id==='${itemObj.id}').price = Number(this.value)" placeholder="價格" class="w-full text-xs px-2.5 py-1.5 border rounded-lg">
+                                    <select onchange="batchItems.find(i=>i.id==='${itemObj.id}').category = this.value" class="text-xs px-2 py-1.5 border rounded-lg bg-white">
+                                        <option value="娃娃">娃娃</option>
+                                        <option value="貼紙">貼紙</option>
+                                        <option value="壓克力">壓克力</option>
+                                        <option value="公仔">公仔</option>
+                                        <option value="吊飾">吊飾</option>
+                                        <option value="包包">包包</option>
+                                        <option value="衣服">衣服</option>
+                                        <option value="文具">文具</option>
+                                        <option value="其他雜貨" selected>其他</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="button" onclick="saveSingleBatchItem('${itemObj.id}', this)" class="text-white px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 shadow-xs transition" style="background-color: ${customThemeColor};">儲存</button>
+                        `;
+                        container.appendChild(rowDiv);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                document.getElementById('batchCountBadge').innerText = '尚未選擇圖片';
+                document.getElementById('batchSaveAllContainer').classList.add('hidden');
+            }
+        }
+
+        async function saveSingleBatchItem(itemId, btnElem) {
+            const found = batchItems.find(i => i.id === itemId);
+            if (!found) return;
+
+            const newProduct = {
+                id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+                title: found.title || '吉伊卡哇商品',
+                price: found.price || 330,
+                category: found.category || '其他雜貨',
+                images: [found.base64]
+            };
+            products.push(newProduct);
+            await saveProductsToStorage();
+
+            btnElem.closest('div.flex').remove();
+            alert('單品儲存上架成功！');
+        }
+
+        async function saveAllBatchProducts() {
+            if (batchItems.length === 0) return;
+
+            batchItems.forEach(item => {
+                const newProduct = {
+                    id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+                    title: item.title || '吉伊卡哇商品',
+                    price: item.price || 330,
+                    category: item.category || '其他雜貨',
+                    images: [item.base64]
+                };
+                products.push(newProduct);
+            });
+
+            await saveProductsToStorage();
+            document.getElementById('batchImages').value = '';
+            document.getElementById('batchRowsContainer').innerHTML = '';
+            document.getElementById('batchCountBadge').innerText = '尚未選擇圖片';
+            document.getElementById('batchSaveAllContainer').classList.add('hidden');
+            batchItems = [];
+            alert('批量上架成功！');
+        }
+
+        async function downloadOrderImage() {
+            const keys = Object.keys(cart);
+            if (keys.length === 0) {
+                alert('購物車是空的，無法下載清單！');
+                return;
+            }
+
+            const exportList = document.getElementById('exportItemsList');
+            exportList.innerHTML = '';
+
+            let total = 0;
+            keys.forEach(id => {
+                const p = products.find(item => String(item.id) === String(id));
+                if (!p) return;
+                const qty = cart[id];
+                const subtotal = p.price * qty;
+                total += subtotal;
+
+                const coverImg = (p.images && p.images.length > 0) ? p.images[0] : '';
+                const row = document.createElement('div');
+                row.className = 'py-3 flex items-center justify-between gap-4';
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                        <img src="${coverImg}" crossorigin="anonymous" class="w-14 h-14 object-cover rounded-xl border border-slate-200 shrink-0">
+                        <div class="min-w-0">
+                            <div class="font-bold text-slate-800 text-sm truncate">${p.title}</div>
+                            <div class="text-xs text-slate-500">單價: NT$ ${p.price}</div>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-sm font-bold" style="color: ${customThemeColor};">數量: ${qty}</div>
+                        <div class="text-xs font-semibold text-slate-700">NT$ ${subtotal}</div>
+                    </div>
+                `;
+                exportList.appendChild(row);
+            });
+
+            const prepayChecked = document.getElementById('prepayCheckbox').checked;
+            const freightChecked = document.getElementById('freightCheckbox').checked;
+            const groupNameText = document.getElementById('groupNameInput').value.trim();
+            const remarkText = document.getElementById('remarkInput').value.trim();
+
+            const prepayRow = document.getElementById('exportPrepayRow');
+            const freightRow = document.getElementById('exportFreightRow');
+            const groupRow = document.getElementById('exportGroupRow');
+            const remarkRow = document.getElementById('exportRemarkRow');
+            
+            if (prepayChecked) {
+                total = Math.max(0, total - 20);
+                prepayRow.classList.remove('hidden');
+            } else {
+                prepayRow.classList.add('hidden');
+            }
+
+            if (freightChecked) {
+                freightRow.classList.remove('hidden');
+            } else {
+                freightRow.classList.add('hidden');
+            }
+
+            if (groupNameText) {
+                document.getElementById('exportGroupText').innerText = groupNameText;
+                groupRow.classList.remove('hidden');
+            } else {
+                groupRow.classList.add('hidden');
+            }
+
+            if (remarkText) {
+                document.getElementById('exportRemarkText').innerText = remarkText;
+                remarkRow.classList.remove('hidden');
+            } else {
+                remarkRow.classList.add('hidden');
+            }
+
+            document.getElementById('exportTotalText').innerText = `NT$ ${total}`;
+            document.getElementById('exportTotalText').style.color = customThemeColor;
+
+            const wrapper = document.getElementById('exportWrapper');
+            wrapper.style.display = 'block';
+
+            try {
+                const canvas = await html2canvas(wrapper, { scale: 2, useCORS: true });
+                const imageURL = canvas.toDataURL('image/jpeg', 0.95);
+                const link = document.createElement('a');
+                link.href = imageURL;
+                link.download = `2U代購清單_${new Date().toISOString().slice(0, 10)}.jpg`;
+                link.click();
+            } catch (e) {
+                console.error("產生圖片失敗", e);
+                alert('產生圖片失敗，請稍後再試');
+            } finally {
+                wrapper.style.display = 'none';
+            }
+        }
+
+        renderAdminImagePreviews();
+    </script>
+</body>
+</html>
